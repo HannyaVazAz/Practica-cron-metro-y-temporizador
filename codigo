@@ -1,0 +1,213 @@
+// Pines de conexión al 74HC595
+const int latchPin = 2;  // Pin de almacenamiento (RCLK)
+const int clockPin = 3;  // Pin de reloj (SRCLK)
+const int dataPin = 4;   // Pin de datos en serie (SER)
+const int latchPin2 = 5; // Pin de almacenamiento (RCLK)
+const int clockPin2 = 6; // Pin de reloj (SRCLK)
+const int dataPin2 = 7;  // Pin de datos en serie (SER)
+const int botonAumentar = 9;                                                                         
+const int botonDisminuir = 8;
+const int botonRestart = 10;
+const int botonPlay = 11;
+const int botonModo = 12;
+const int bocinita = 13;
+const int ledPrueba = A0;
+
+int aumentar;
+int disminuir;
+bool enEjecucion = false;
+
+int segundos = 0;
+int unidades = 0;
+int decenas = 0; 
+bool modoCronometro = true;
+int cronometro;
+int restart;
+bool primerdigito = true;
+
+
+
+unsigned long ultimoTiempo = 0;
+const unsigned long intervalo = 1000; // 1 segundo
+
+const byte segmentMap[] = {
+  0b00000101, // 0
+  0b01011111, // 1
+  0b00100011, // 2
+  0b00001011, // 3
+  0b01011001, // 4
+  0b10001001, // 5
+  0b10000001, // 6
+  0b00011111, // 7
+  0b00000001, // 8
+  0b00011001  // 9
+};
+
+
+#define NOTE_F3 174.61
+#define NOTE_A3  440
+#define NOTE_B3  494
+#define NOTE_C4  261.63
+#define NOTE_D5  587
+#define NOTE_E4  329.63
+#define NOTE_F4  349.23
+#define NOTE_G5  784
+#define NOTE_A5  880
+
+// Melodía de Star Wars
+int melody[] = {
+  NOTE_A3, NOTE_A3, NOTE_A3, NOTE_F3, NOTE_C4,
+  NOTE_A3, NOTE_F3, NOTE_C4, NOTE_A3
+};
+
+int noteDurations[] = {
+  2, 2, 2, 2, 8.1,
+  2, 2, 8.2, 2
+};
+
+
+
+void setup() {
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataPin, OUTPUT);
+  pinMode(latchPin2, OUTPUT);
+  pinMode(clockPin2, OUTPUT);
+  pinMode(dataPin2, OUTPUT);
+  pinMode(botonAumentar, INPUT_PULLUP);
+  pinMode(botonDisminuir, INPUT_PULLUP);
+  pinMode(botonRestart, INPUT_PULLUP);
+  pinMode(botonPlay, INPUT_PULLUP);
+  pinMode(botonModo, INPUT_PULLUP);
+  pinMode(bocinita, OUTPUT);
+  pinMode(ledPrueba, OUTPUT);
+
+}
+
+void loop() {
+
+    cronometro = digitalRead(botonModo); 
+    MostrarTiempo();
+    enEjecucion = digitalRead(botonPlay);
+
+
+if(cronometro == 1){
+  while(cronometro == 1){
+
+          for (int i = 0; i < 10; i++) { 
+          unidades++;
+
+          if (primerdigito == false && unidades > 9) {
+              decenas++;
+              unidades = 0;
+            }
+            if (decenas > 9) {
+              decenas = 0;
+              primerdigito = true;
+            }
+            MostrarTiempo();
+          
+        primerdigito = false;
+          delay(1000); 
+
+            if (digitalRead(botonModo) == 0) { 
+                        cronometro = 0;
+                        break; 
+                    }
+          }}}
+
+    if(digitalRead(botonRestart) == 1){
+      Restart();
+      MostrarTiempo();
+    }
+
+              // Temporizador
+    if (digitalRead(botonPlay) == 1) {
+      int bucle = 1;
+          while(bucle == 1) {
+            digitalWrite(ledPrueba, HIGH);
+              if (decenas == 0 && unidades == 0) {
+                MostrarTiempo();
+                enEjecucion = false;
+                Cancion(); 
+                digitalWrite(ledPrueba, LOW);
+                break;
+            }
+            unidades--;
+            if (unidades < 0) {
+                unidades = 9;
+                decenas--;
+            }
+            MostrarTiempo();
+            delay(1000);
+
+               if (digitalRead(botonPlay) == 1) {
+                if(enEjecucion == false){enEjecucion == true;}
+                if(enEjecucion == true){enEjecucion == false;}
+              }
+          }
+        }
+
+        if(digitalRead(botonAumentar) == 1){
+           unidades++;
+
+          if (primerdigito == false && unidades > 9) { 
+              decenas++;
+              unidades = 0;
+            }
+            if (decenas > 9) { 
+              decenas = 0;
+              primerdigito = true;
+            }
+            primerdigito = false;
+            MostrarTiempo();
+          delay(100);
+        }
+
+       if(digitalRead(botonDisminuir) == 1){ 
+          unidades--; 
+            if(unidades < 0 && decenas == 0){ 
+              unidades = 9; 
+              decenas = 9;
+            }else if (unidades < 0) { 
+                unidades = 9; 
+                decenas--; 
+            }
+                
+            MostrarTiempo();
+          delay(100);
+        }
+    }
+
+
+
+void Cancion(){
+  for (int thisNote = 0; thisNote < sizeof(melody) / sizeof(melody[0]); thisNote++) {
+    int noteDuration = 1000 / noteDurations[thisNote]; 
+    if (melody[thisNote] != 0) {
+      tone(bocinita, melody[thisNote], noteDuration); 
+    }
+    delay(noteDuration * 1.2); 
+    noTone(bocinita);
+  }
+}
+
+
+void MostrarTiempo(){
+
+    digitalWrite(latchPin2, LOW); 
+    shiftOut(dataPin2, clockPin2, LSBFIRST, segmentMap[unidades]); 
+    digitalWrite(latchPin2, HIGH);
+  
+    digitalWrite(latchPin, LOW); 
+    shiftOut(dataPin, clockPin, LSBFIRST, segmentMap[decenas]); 
+    digitalWrite(latchPin, HIGH);
+}
+
+void Restart(){
+
+    unidades = 0;
+    decenas = 0;
+}
+
+
